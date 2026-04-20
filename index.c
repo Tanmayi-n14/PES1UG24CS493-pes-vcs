@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include "pes.h"
 
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
@@ -134,12 +135,6 @@ int index_status(const Index *index) {
 //   - hex_to_hash                      : converting the parsed string to ObjectID
 //
 // Returns 0 on success, -1 on error.
-int index_load(Index *index) {
-    // TODO: Implement index loading
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
-}
 
 // Save the index to .pes/index atomically.
 //
@@ -151,12 +146,6 @@ int index_load(Index *index) {
 //   - rename                           : atomically moving the temp file over the old index
 //
 // Returns 0 on success, -1 on error.
-int index_save(const Index *index) {
-    // TODO: Implement atomic index saving
-    // (See Lab Appendix for logical steps)
-    (void)index;
-    return -1;
-}
 
 // Stage a file for the next commit.
 //
@@ -167,9 +156,81 @@ int index_save(const Index *index) {
 //   - index_find                       : checking if the file is already staged
 //
 // Returns 0 on success, -1 on error.
+
+
+int index_load(Index *index) {
+    index->count = 0;
+    FILE *f = fopen(".pes/index", "r");
+    if (!f) return 0; 
+
+    char mode_str[16], hash_hex[65], path_buf[256];
+    long mtime;
+    uint32_t size; 
+
+    // Using %u for uint32_t size
+    while (fscanf(f, "%s %s %ld %u %s", mode_str, hash_hex, &mtime, &size, path_buf) == 5) {
+        if (index->count >= MAX_INDEX_ENTRIES) break;
+        IndexEntry *e = &index->entries[index->count];
+        
+        e->mode = strtol(mode_str, NULL, 8);
+        hex_to_hash(hash_hex, &e->hash); // Changed .id to .hash
+        e->mtime_sec = (uint64_t)mtime;
+        e->size = size;
+        strncpy(e->path, path_buf, sizeof(e->path) - 1);
+        index->count++;
+    }
+    fclose(f);
+    return 0;
+}
+
+int index_save(const Index *index) {
+    FILE *f = fopen(".pes/index.tmp", "w");
+    if (!f) return -1;
+
+    for (int i = 0; i < index->count; i++) {
+        const IndexEntry *e = &index->entries[i];
+        char hash_hex[65];
+        hash_to_hex(&e->hash, hash_hex); // Changed .id to .hash
+        
+        // Using %u for size to match uint32_t
+        fprintf(f, "%o %s %ld %u %s\n", e->mode, hash_hex, (long)e->mtime_sec, e->size, e->path);
+    }
+
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
+    return rename(".pes/index.tmp", ".pes/index");
+}
+
 int index_add(Index *index, const char *path) {
-    // TODO: Implement file staging
-    // (See Lab Appendix for logical steps)
-    (void)index; (void)path;
-    return -1;
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) return -1;
+    void *data = malloc(st.st_size);
+    if (read(fd, data, st.st_size) != (ssize_t)st.st_size) {
+        free(data); close(fd); return -1;
+    }
+    close(fd);
+
+    ObjectID id;
+    if (object_write(OBJ_BLOB, data, st.st_size, &id) != 0) {
+        free(data); return -1;
+    }
+    free(data);
+
+    IndexEntry *e = index_find(index, path);
+    if (!e) {
+        if (index->count >= MAX_INDEX_ENTRIES) return -1;
+        e = &index->entries[index->count++];
+        strncpy(e->path, path, sizeof(e->path) - 1);
+    }
+
+    e->mode = st.st_mode;
+    e->mtime_sec = st.st_mtime;
+    e->size = (uint32_t)st.st_size;
+    memcpy(e->hash.hash, id.hash, 32); // Changed .id to .hash
+
+    return index_save(index);
 }
