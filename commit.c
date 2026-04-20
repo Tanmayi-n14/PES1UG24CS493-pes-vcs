@@ -193,33 +193,50 @@ int head_update(const ObjectID *new_commit) {
 //   - head_update       : moves the branch pointer to your new commit
 //
 // Returns 0 on success, -1 on error.
-// 1. Generate the tree from the current index
-    if (tree_from_index(&commit.tree) != 0) {
+int commit_create(const char *message, ObjectID *commit_id) {
+    ObjectID tree_id;
+
+    // build tree
+    if (tree_from_index(&tree_id) != 0) {
         return -1;
     }
 
-    // 2. Get the parent commit hash from HEAD
-    if (head_read(&commit.parent) == 0) {
-        commit.has_parent = 1;
+    // get parent commit (if exists)
+    ObjectID parent_id;
+    int has_parent = (head_read(&parent_id) == 0);
+
+    char author[256];
+    strcpy(author, pes_author());
+
+    long timestamp = time(NULL);
+
+    char tree_hex[HASH_HEX_SIZE + 1];
+    char parent_hex[HASH_HEX_SIZE + 1];
+
+    hash_to_hex(&tree_id, tree_hex);
+    if (has_parent) hash_to_hex(&parent_id, parent_hex);
+
+    char buffer[4096];
+
+    if (has_parent) {
+        snprintf(buffer, sizeof(buffer),
+            "tree %s\nparent %s\nauthor %s %ld\ncommitter %s %ld\n\n%s\n",
+            tree_hex, parent_hex,
+            author, timestamp,
+            author, timestamp,
+            message);
     } else {
-        commit.has_parent = 0;
-    }
-// 3. Fill in metadata
-    // Note: Assuming pes_author() is provided as per your file hints
-    snprintf(commit.author, sizeof(commit.author), "Student <cs@pesu.edu>");
-    commit.timestamp = (uint64_t)time(NULL);
-    strncpy(commit.message, message, sizeof(commit.message) - 1);
-
-// 4. Serialize the struct into the text format
-    void *data;
-    size_t len;
-    if (commit_serialize(&commit, &data, &len) != 0) {
-        return -1;
+        snprintf(buffer, sizeof(buffer),
+            "tree %s\nauthor %s %ld\ncommitter %s %ld\n\n%s\n",
+            tree_hex,
+            author, timestamp,
+            author, timestamp,
+            message);
     }
 
-    // 5. Write the commit object to the store
-    if (object_write(OBJ_COMMIT, data, len, commit_id_out) != 0) {
-        free(data);
-        return -1;
-    }
-    free(data);}
+    object_write(OBJ_COMMIT, buffer, strlen(buffer), commit_id);
+
+    head_update(commit_id);
+
+    return 0;
+}
