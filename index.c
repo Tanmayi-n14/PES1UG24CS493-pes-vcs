@@ -180,3 +180,18 @@ int index_load(Index *index) {
     fclose(f);
     return 0;
 }
+
+int index_save(const Index *index) {
+    FILE *f = fopen(".pes/index.tmp", "w");
+    if (!f) return -1;
+    for (int i = 0; i < index->count; i++) {
+        const IndexEntry *e = &index->entries[i];
+        char hash_hex[65];
+        hash_to_hex(&e->hash, hash_hex);
+        fprintf(f, "%o %s %ld %u %s\n", e->mode, hash_hex, (long)e->mtime_sec, e->size, e->path);
+    }
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
+    return rename(".pes/index.tmp", ".pes/index");
+}
