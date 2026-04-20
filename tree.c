@@ -152,7 +152,13 @@ int tree_from_index(ObjectID *id_out) {
 
         strncpy(e->name, name, sizeof(e->name) - 1);
         e->name[sizeof(e->name) - 1] = '\0';
-        
+	void *data;
+    size_t len;
+
+    if (tree_serialize(&tree, &data, &len) != 0) {
+        fclose(f);
+        return -1;
+    }        
         hex_to_hash(hash_hex, &e->id); 
         tree.count++;
     }    fclose(f);
