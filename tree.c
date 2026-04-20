@@ -132,8 +132,16 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 
 
 int tree_from_index(ObjectID *id_out) {
-    // TODO: Implement recursive tree building
-    // (See Lab Appendix for logical steps)
-    (void)id_out;
-    return -1;
+    FILE *f = fopen(".pes/index", "r");
+    if (!f) return -1;
+
+    Tree tree;
+    tree.count = 0;
+
+    char mode_str[10], hash_hex[65], path[256];
+    long mtime;
+    size_t size;
+    // (Rest of the code will be added in next commits)
+    fclose(f);
+    return 0;
 }
