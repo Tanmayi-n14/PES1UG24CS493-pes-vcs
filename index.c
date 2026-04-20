@@ -195,3 +195,19 @@ int index_save(const Index *index) {
     fclose(f);
     return rename(".pes/index.tmp", ".pes/index");
 }
+
+
+int index_add(Index *index, const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) return -1;
+    void *data = malloc(st.st_size);
+    if (read(fd, data, st.st_size) != (ssize_t)st.st_size) {
+        free(data); close(fd); return -1;
+    }
+    close(fd);
+    // ... Rest to be added in next commit
+    return 0;
+}
