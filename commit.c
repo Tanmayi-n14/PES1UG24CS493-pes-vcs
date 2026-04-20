@@ -193,15 +193,21 @@ int head_update(const ObjectID *new_commit) {
 //   - head_update       : moves the branch pointer to your new commit
 //
 // Returns 0 on success, -1 on error.
-int commit_create(const char *message, ObjectID *commit_id) {
-    ObjectID tree_id;
-
-    // build tree
-    if (tree_from_index(&tree_id) != 0) {
+// 1. Generate the tree from the current index
+    if (tree_from_index(&commit.tree) != 0) {
         return -1;
     }
 
-    // get parent commit (if exists)
-    ObjectID parent_id;
-    int has_parent = (head_read(&parent_id) == 0);
+    // 2. Get the parent commit hash from HEAD
+    if (head_read(&commit.parent) == 0) {
+        commit.has_parent = 1;
+    } else {
+        commit.has_parent = 0;
+    }
+// 3. Fill in metadata
+    // Note: Assuming pes_author() is provided as per your file hints
+    snprintf(commit.author, sizeof(commit.author), "Student <cs@pesu.edu>");
+    commit.timestamp = (uint64_t)time(NULL);
+    strncpy(commit.message, message, sizeof(commit.message) - 1);
+
 }
