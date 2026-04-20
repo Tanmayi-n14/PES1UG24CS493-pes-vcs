@@ -141,7 +141,20 @@ int tree_from_index(ObjectID *id_out) {
     char mode_str[10], hash_hex[65], path[256];
     long mtime;
     size_t size;
-    // (Rest of the code will be added in next commits)
-    fclose(f);
+	while (fscanf(f, "%s %s %ld %zu %s", mode_str, hash_hex, &mtime, &size, path) == 5) {
+        if (tree.count >= MAX_TREE_ENTRIES) break;
+
+        TreeEntry *e = &tree.entries[tree.count];
+        e->mode = strtol(mode_str, NULL, 8);
+
+        const char *name = strrchr(path, '/');
+        if (name) name++; else name = path;
+
+        strncpy(e->name, name, sizeof(e->name) - 1);
+        e->name[sizeof(e->name) - 1] = '\0';
+        
+        hex_to_hash(hash_hex, &e->id); 
+        tree.count++;
+    }    fclose(f);
     return 0;
 }
