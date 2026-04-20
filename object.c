@@ -179,9 +179,9 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 // The caller is responsible for calling free(*data_out).
 // Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
-    // TODO: Implement
-char path[512];
+    char path[512];
     object_path(id, path, sizeof(path));
+
     FILE *f = fopen(path, "rb");
     if (!f) return -1;
 
@@ -193,7 +193,35 @@ char path[512];
     fread(buffer, 1, size, f);
     fclose(f);
 
+    // verify hash
     ObjectID check;
     compute_hash(buffer, size, &check);
-    if (memcmp(check.hash, id->hash, 32) != 0) { free(buffer); return -1; 
+
+    if (memcmp(check.hash, id->hash, HASH_SIZE) != 0) {
+        free(buffer);
+        return -1;
+    }
+
+    // parse header
+    char type_str[10];
+    sscanf(buffer, "%s %zu", type_str, len_out);
+
+    if (strcmp(type_str, "blob") == 0) *type_out = OBJ_BLOB;
+    else if (strcmp(type_str, "tree") == 0) *type_out = OBJ_TREE;
+    else *type_out = OBJ_COMMIT;
+
+    // extract data
+    char *data_start = memchr(buffer, '\0', size);
+    if (!data_start) {
+        free(buffer);
+        return -1;
+    }
+
+    data_start++;
+
+    *data_out = malloc(*len_out);
+    memcpy(*data_out, data_start, *len_out);
+
+    free(buffer);
+    return 0;
 }
