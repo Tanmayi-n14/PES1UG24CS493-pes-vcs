@@ -63,5 +63,9 @@ README INCLUDES PHASE 5 AND 6 AND SCREENSHOTS FROM PHASE 1 TO 4
 
 - **Screenshot 4C (Ref Chain):** <img width="1920" height="921" alt="VirtualBox_Ubuntu 24 04 3_20_04_2026_16_58_54" src="https://github.com/user-attachments/assets/5a714578-f924-4c18-83fb-a73d3078a1c3" />
 
+---
 
+## 👤 Author
 
+* **Tanmayi Nagabhairava** ([@Tanmayi-n14](https://github.com/Tanmayi-n14)) — `PES1UG24CS493`
+* Department of Computer Science & Engineering, PES University
